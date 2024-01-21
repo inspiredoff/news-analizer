@@ -2,10 +2,6 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 
-
-# main_url = "https://ria.ru/services/archive/widget/more.html"
-# tag = 'a'
-
 class News_parser:
 
     def __init__(self, url):
@@ -15,6 +11,7 @@ class News_parser:
         self.url = url
         if self.url == ' ':
             self.url = self.main_url
+        self.tasks = []
 
     async def client_request_soup(self):
         async with aiohttp.ClientSession() as session:
@@ -36,8 +33,69 @@ class News_parser:
 
     async def parser(self):
         await self.client_request_soup()
-        await self.response_parsing_headers()
-        await self.next_url()
+        task = asyncio.create_task(self.response_parsing_headers())
+        self.tasks.append(task)
+        task = asyncio.create_task(self.next_url())
+        self.tasks.append(task)
+
+        await asyncio.gather(*self.tasks)
+
+
+class News_headline_parsing(News_parser):
+
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self, url):
+        super().__init__(url)
+        self.count = 0
+        self.url = url
+        self.tag = 'div'
+        self.class_ = 'article__title'
+        # self.get_tag = 'href'
+
+    async def client_request_soup(self):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.url) as response:
+                self.soup = BeautifulSoup(await response.text(), 'lxml')
+
+    async def data_parsing(self):
+        if self.class_ is None:
+            url_headers = self.soup.find(self.tag)
+        else:
+            url_headers = self.soup.find(class_='article__title')
+        for string in url_headers.stripped_strings:
+            print(repr(string))
+
+    async def time_parsing(self):
+        if self.class_ is None:
+            url_headers = self.soup.find(self.tag)
+        else:
+            url_headers = self.soup.find(class_='article__info-date')
+        self.count = 0
+        for string in url_headers.stripped_strings:
+            self.count += 1
+            print(repr(string))
+
+    async def tag_parsing(self):
+        if self.class_ is None:
+            self.tag_parsing = self.soup.find(self.tag)
+        else:
+            self.tag_parsing = self.soup.find_all(class_='article__tags-item')
+        for headers in self.tag_parsing:
+            for string in headers.stripped_strings:
+                print(repr(string))
+
+    async def parser_1(self):
+        await self.client_request_soup()
+        task = asyncio.create_task(self.data_parsing())
+        self.tasks.append(task)
+        task = asyncio.create_task(self.time_parsing())
+        self.tasks.append(task)
+        task = asyncio.create_task(self.tag_parsing())
+        self.tasks.append(task)
+
+        await asyncio.gather(*self.tasks)
 
 
 class RiaNews(News_parser):
@@ -53,19 +111,11 @@ class RiaNews(News_parser):
         self.class_next_url = 'lenta__item'
 
 
-
-
-list1 = RiaNews(' ')
-asyncio.run(list1.parser())
-print(list1.url_headers)
-print(list1.next_url)
-list2 = RiaNews(list1.next_url)
-asyncio.run(list2.parser())
-print(list2.url_headers)
-print(list2.next_url)
-# list1 = News_parser("https://ria.ru/services/archive/widget/more.html", 'a', 'lenta__item', 'href')
-# asyncio.run(list1.parser())
-# print(list1.url_headers)
-# list2 = News_parser(list1.next_url, 'a', 'lenta__item', 'href')
-# asyncio.run(list2.parser())
-# print(list2.url_headers)
+b = "https://ria.ru/services/archive/widget/more.html"
+for a in range(1, 5):
+    c = RiaNews(b)
+    asyncio.run(c.parser())
+    print(c.url_headers)
+    b = c.next_url
+    for url in c.url_headers:
+        asyncio.run(News_headline_parsing(url).parser_1())
