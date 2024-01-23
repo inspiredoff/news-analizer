@@ -60,13 +60,6 @@ class News_parser:
 class News_headline_parsing(News_parser):
     def __init__(self, url):
         super().__init__(url)
-        # self.get_tag = 'href'
-
-    # async def cooking_soup_1(self):
-    #     async with aiohttp.ClientSession() as session:
-    #         async with session.get(self.url) as response:
-    #             html_text = await response.text()
-    #     self.soup = BeautifulSoup(html_text, 'lxml')
 
     async def search_for_news_headline(self):
         news_headline = await self.bs4_parser(self.tag_news_headline, self.class_news_headline)
