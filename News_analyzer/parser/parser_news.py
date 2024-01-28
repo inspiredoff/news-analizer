@@ -2,15 +2,19 @@ import asyncio
 import aiohttp
 import time
 from bs4 import BeautifulSoup
+import pandas
 
 
 class News_parser:
+    # news_time = None
 
     def __init__(self):
-        super().__init__()
+        RiaNews().__init__()
+        self.continuation = True
         self.soup = None
         self.next_page_url = None
         self.next_page_url.__str__()
+        news_time = None
 
     async def cooking_soup(self, url):
         async with aiohttp.ClientSession() as session:
@@ -53,18 +57,28 @@ class News_parser:
                 search_result = self.soup.find(tag, itemprop=itemprop)
         return search_result
 
+    async def time_compasion(self, tasks, tasks1, list_url):
+        var = RiaNews().search_depth
+        var1 = self.news_time
+        if var >= var1:
+            self.continuation = False
+            return tasks.clear(), tasks1.clear(), list_url.clear()
+
     async def parser(self):
         url = RiaNews().main_url
-        for page in range(1, 5):
+
+        while self.continuation == True:
             soup = await self.cooking_soup(url)
             news_headline = await News_page_parser(soup).search_for_article_url()
             url = await News_page_parser(soup).search_for_next_page_url()
-            print(url)
+
+            # print(url)
 
             async def async_for(list_url):
-                tasks1 = []
+
                 for url in list_url:
                     tasks = []
+                    tasks1 = []
                     task = asyncio.create_task(self.cooking_soup(url))
                     tasks.append(task)
                     task = asyncio.create_task(self.cooking_soup(('https://ria.ru/services/dynamics' + url[14:-1])))
@@ -78,10 +92,13 @@ class News_parser:
                     task = asyncio.create_task(headline_parsing.tag_headline())
                     tasks1.append(task)
                     task = asyncio.create_task(Number_of_header_views(soup[1]).number_of_views())
-                    tasks.append(task)
+                    tasks1.append(task)
                     task = asyncio.create_task(headline_parsing.razdel())
                     tasks1.append(task)
-                await asyncio.gather(*tasks1)
+                    task = asyncio.create_task(self.time_compasion(tasks, tasks1, list_url))
+                    tasks1.append(task)
+                    n = await asyncio.gather(*tasks1)
+                    print(n)
 
                 # await asyncio.gather(*tasks)
 
@@ -91,6 +108,7 @@ class News_parser:
 class News_page_parser(News_parser):
     def __init__(self, soup):
         super().__init__()
+        RiaNews().__init__()
         self.soup = soup
 
     async def search_for_article_url(self):
@@ -98,9 +116,8 @@ class News_page_parser(News_parser):
         list_url = await self.bs4_parser(RiaNews().tag_article_url, RiaNews().class_article_url)
         for url in list_url:
             article_url.append(RiaNews().url_title + url.get(RiaNews().get_tag_article_url))
-        print(article_url)
+        # print(article_url)
         return article_url
-
 
     async def search_for_next_page_url(self):
         next_page_url = await self.bs4_parser(RiaNews().tag_next_url, RiaNews().class_next_url)
@@ -115,27 +132,31 @@ class News_headline_parsing(News_parser):
         self.soup = soup
 
     async def search_for_news_headline(self):
-        news_headline = await self.bs4_parser(RiaNews().tag_news_headline, RiaNews().class_news_headline)
-        for text in news_headline:
-            news_headline = text.get_text(strip=False)
-        print(news_headline)
+        news_headline = await self.bs4_parser_itemprop(RiaNews().tag_news_headline, RiaNews().class_news_headline)
+        news_headline = news_headline[3].get(RiaNews().get_news_headline)
+        # print(news_headline)
         return news_headline
 
     async def time_headline(self):
-        time_headline = await self.bs4_parser_itemprop(RiaNews().tag_time_headline_update, RiaNews().itemprop_time_headline_Modified)
+        time_headline = await self.bs4_parser_itemprop(RiaNews().tag_time_headline_update,
+                                                       RiaNews().itemprop_time_headline_Modified)
         for text in time_headline:
             time_headline = text.get_text(strip=True)
         if time_headline == []:
-            time_headline = await self.bs4_parser_itemprop(RiaNews().tag_time_headline, RiaNews().itemprop_time_headline_created)
+            time_headline = await self.bs4_parser_itemprop(RiaNews().tag_time_headline,
+                                                           RiaNews().itemprop_time_headline_created)
             for text in time_headline:
                 time_headline = text.get_text(strip=True)
-        await Time_recognition().struct_time(time_headline)
+        times = await Time_recognition().struct_time(time_headline)
+        return times
 
     async def tag_headline(self):
+        tags_headline = []
         tag_headline = await self.bs4_parser(RiaNews().tag_tag_headline, RiaNews().class_tag_headline)
         for text in tag_headline:
-            self.tag_headline = text.get_text(strip=True)
-            print(self.tag_headline)
+            tags_headline.append(text.get_text(strip=True))
+        # print(tag_headline)
+        return tags_headline
 
     async def razdel(self):
         print('--------------------------------------')
@@ -151,17 +172,18 @@ class Number_of_header_views(News_parser):
         number_of_views = await self.bs4_parser(RiaNews().tag_views_headline, RiaNews().class_views_headline)
         for text in number_of_views:
             search_result = text.get_text().split()
-        print(search_result)
-        return search_result
+        # print(int(search_result[0]))
+        return int(search_result[0])
 
 
 class Time_recognition(News_parser):
     def __init__(self):
-        super().__init__()
+        News_parser().__init__()
 
     async def struct_time(self, time_headline):
         struct_time = time.strptime(time_headline, "%Y-%m-%dT%H:%M")
-        print(struct_time)
+        News_parser.news_time = struct_time
+        # print(struct_time)
         return struct_time
 
     # async def struct_time(self):
@@ -181,8 +203,9 @@ class RiaNews(News_parser):
         self.class_next_url = 'lenta__item'
         self.get_tag_next_url = 'data-next'
 
-        self.tag_news_headline = None
-        self.class_news_headline = 'article__title'
+        self.tag_news_headline = 'meta'
+        self.class_news_headline = 'name'
+        self.get_news_headline = 'content'
 
         self.tag_time_headline = None
         self.class_time_headline = 'article__info-date'
@@ -190,6 +213,8 @@ class RiaNews(News_parser):
         self.class_time_headline_update = 'article__info-date-modified'
         self.itemprop_time_headline_created = 'dateCreated'
         self.itemprop_time_headline_Modified = 'dateModified'
+        times = "2024-01-28 17:00"
+        self.search_depth = time.strptime(times, "%Y-%m-%d %H:%M")
 
         self.tag_tag_headline = None
         self.class_tag_headline = 'article__tags-item'
