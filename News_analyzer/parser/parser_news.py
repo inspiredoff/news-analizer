@@ -2,19 +2,18 @@ import asyncio
 import aiohttp
 import time
 from bs4 import BeautifulSoup
-import pandas
+
 
 
 class News_parser:
-    # news_time = None
+
+    news_time = None
 
     def __init__(self):
-        RiaNews().__init__()
         self.continuation = True
         self.soup = None
         self.next_page_url = None
         self.next_page_url.__str__()
-        news_time = None
 
     async def cooking_soup(self, url):
         async with aiohttp.ClientSession() as session:
@@ -58,14 +57,14 @@ class News_parser:
         return search_result
 
     async def time_compasion(self, tasks, tasks1, list_url):
-        var = RiaNews().search_depth
+        var = RiaNews.search_depth
         var1 = self.news_time
         if var >= var1:
             self.continuation = False
             return tasks.clear(), tasks1.clear(), list_url.clear()
 
     async def parser(self):
-        url = RiaNews().main_url
+        url = RiaNews.main_url
 
         while self.continuation == True:
             soup = await self.cooking_soup(url)
@@ -93,8 +92,6 @@ class News_parser:
                     tasks1.append(task)
                     task = asyncio.create_task(Number_of_header_views(soup[1]).number_of_views())
                     tasks1.append(task)
-                    task = asyncio.create_task(headline_parsing.razdel())
-                    tasks1.append(task)
                     task = asyncio.create_task(self.time_compasion(tasks, tasks1, list_url))
                     tasks1.append(task)
                     n = await asyncio.gather(*tasks1)
@@ -108,20 +105,19 @@ class News_parser:
 class News_page_parser(News_parser):
     def __init__(self, soup):
         super().__init__()
-        RiaNews().__init__()
         self.soup = soup
 
     async def search_for_article_url(self):
         article_url = []
-        list_url = await self.bs4_parser(RiaNews().tag_article_url, RiaNews().class_article_url)
+        list_url = await self.bs4_parser(RiaNews.tag_article_url, RiaNews.class_article_url)
         for url in list_url:
-            article_url.append(RiaNews().url_title + url.get(RiaNews().get_tag_article_url))
+            article_url.append(RiaNews.url_title + url.get(RiaNews.get_tag_article_url))
         # print(article_url)
         return article_url
 
     async def search_for_next_page_url(self):
-        next_page_url = await self.bs4_parser(RiaNews().tag_next_url, RiaNews().class_next_url)
-        next_page_url = RiaNews().url_title + next_page_url[-1].get(RiaNews().get_tag_next_url)
+        next_page_url = await self.bs4_parser(RiaNews.tag_next_url, RiaNews.class_next_url)
+        next_page_url = RiaNews.url_title + next_page_url[-1].get(RiaNews.get_tag_next_url)
         return next_page_url
 
 
@@ -132,19 +128,19 @@ class News_headline_parsing(News_parser):
         self.soup = soup
 
     async def search_for_news_headline(self):
-        news_headline = await self.bs4_parser_itemprop(RiaNews().tag_news_headline, RiaNews().class_news_headline)
-        news_headline = news_headline[3].get(RiaNews().get_news_headline)
+        news_headline = await self.bs4_parser_itemprop(RiaNews.tag_news_headline, RiaNews.class_news_headline)
+        news_headline = news_headline[3].get(RiaNews.get_news_headline)
         # print(news_headline)
         return news_headline
 
     async def time_headline(self):
-        time_headline = await self.bs4_parser_itemprop(RiaNews().tag_time_headline_update,
-                                                       RiaNews().itemprop_time_headline_Modified)
+        time_headline = await self.bs4_parser_itemprop(RiaNews.tag_time_headline_update,
+                                                       RiaNews.itemprop_time_headline_Modified)
         for text in time_headline:
             time_headline = text.get_text(strip=True)
         if time_headline == []:
-            time_headline = await self.bs4_parser_itemprop(RiaNews().tag_time_headline,
-                                                           RiaNews().itemprop_time_headline_created)
+            time_headline = await self.bs4_parser_itemprop(RiaNews.tag_time_headline,
+                                                           RiaNews.itemprop_time_headline_created)
             for text in time_headline:
                 time_headline = text.get_text(strip=True)
         times = await Time_recognition().struct_time(time_headline)
@@ -152,7 +148,7 @@ class News_headline_parsing(News_parser):
 
     async def tag_headline(self):
         tags_headline = []
-        tag_headline = await self.bs4_parser(RiaNews().tag_tag_headline, RiaNews().class_tag_headline)
+        tag_headline = await self.bs4_parser(RiaNews.tag_tag_headline, RiaNews.class_tag_headline)
         for text in tag_headline:
             tags_headline.append(text.get_text(strip=True))
         # print(tag_headline)
@@ -169,7 +165,7 @@ class Number_of_header_views(News_parser):
         self.soup = soup
 
     async def number_of_views(self):
-        number_of_views = await self.bs4_parser(RiaNews().tag_views_headline, RiaNews().class_views_headline)
+        number_of_views = await self.bs4_parser(RiaNews.tag_views_headline, RiaNews.class_views_headline)
         for text in number_of_views:
             search_result = text.get_text().split()
         # print(int(search_result[0]))
@@ -190,37 +186,35 @@ class Time_recognition(News_parser):
 
 
 class RiaNews(News_parser):
+    main_url = "https://ria.ru/services/archive/widget/more.html"
+    url_title = "https://ria.ru"
 
-    def __init__(self):
-        self.main_url = "https://ria.ru/services/archive/widget/more.html"
-        self.url_title = "https://ria.ru"
+    tag_article_url = 'a'
+    class_article_url = None
+    get_tag_article_url = 'href'
 
-        self.tag_article_url = 'a'
-        self.class_article_url = None
-        self.get_tag_article_url = 'href'
+    tag_next_url = 'div'
+    class_next_url = 'lenta__item'
+    get_tag_next_url = 'data-next'
 
-        self.tag_next_url = 'div'
-        self.class_next_url = 'lenta__item'
-        self.get_tag_next_url = 'data-next'
+    tag_news_headline = 'meta'
+    class_news_headline = 'name'
+    get_news_headline = 'content'
 
-        self.tag_news_headline = 'meta'
-        self.class_news_headline = 'name'
-        self.get_news_headline = 'content'
+    tag_time_headline = None
+    class_time_headline = 'article__info-date'
+    tag_time_headline_update = None
+    class_time_headline_update = 'article__info-date-modified'
+    itemprop_time_headline_created = 'dateCreated'
+    itemprop_time_headline_Modified = 'dateModified'
+    times = "2024-01-28 17:00"
+    search_depth = time.strptime(times, "%Y-%m-%d %H:%M")
 
-        self.tag_time_headline = None
-        self.class_time_headline = 'article__info-date'
-        self.tag_time_headline_update = None
-        self.class_time_headline_update = 'article__info-date-modified'
-        self.itemprop_time_headline_created = 'dateCreated'
-        self.itemprop_time_headline_Modified = 'dateModified'
-        times = "2024-01-28 17:00"
-        self.search_depth = time.strptime(times, "%Y-%m-%d %H:%M")
+    tag_tag_headline = None
+    class_tag_headline = 'article__tags-item'
 
-        self.tag_tag_headline = None
-        self.class_tag_headline = 'article__tags-item'
-
-        self.tag_views_headline = None
-        self.class_views_headline = 'article__views'
+    tag_views_headline = None
+    class_views_headline = 'article__views'
 
 
 # news_header_url = []
