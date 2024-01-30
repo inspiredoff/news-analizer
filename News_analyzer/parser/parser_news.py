@@ -213,7 +213,7 @@ class RiaNews(News_parser):
         self.class_time_headline_update = 'article__info-date-modified'
         self.itemprop_time_headline_created = 'dateCreated'
         self.itemprop_time_headline_Modified = 'dateModified'
-        times = "2024-01-28 17:00"
+        times = "2024-01-28 20:00"
         self.search_depth = time.strptime(times, "%Y-%m-%d %H:%M")
 
         self.tag_tag_headline = None
@@ -223,7 +223,6 @@ class RiaNews(News_parser):
         self.class_views_headline = 'article__views'
 
 
-# news_header_url = []
 url_ = "https://ria.ru/services/archive/widget/more.html"
 
 #### асинхронный цикл ####
